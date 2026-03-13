@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Whack-a-Mole Lịch Sử 10 - Đập chuột</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bungee&family=Roboto:wght@400;700;900&display=swap');
+
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #0a3f1e;
+            background-image: radial-gradient(circle at 30% 30%, #3e8e41, #0a3f1e);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: none;
+            margin: 0;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .leaf {
+            position: fixed;
+            top: -10%;
+            color: #4caf50;
+            font-size: 24px;
+            opacity: 0.4;
+            pointer-events: none;
+            z-index: 0;
+            animation: fall linear infinite;
+        }
+        @keyframes fall {
+            to { transform: translateY(100vh) rotate(360deg); }
+        }
+
+        .game-font {
+            font-family: 'Bungee', cursive;
+            letter-spacing: 1px;
+        }
+
+        #game-container {
+            background: #8b5a2b;
+            background-image: repeating-linear-gradient(45deg, #7b4f26 0px, #7b4f26 2px, #9b6e3c 2px, #9b6e3c 8px);
+            border: 8px solid #5e3e1f;
+            border-radius: 70px 70px 30px 30px;
+            box-shadow: 0 25px 0 #4a3118, 0 30px 30px rgba(0,0,0,0.7);
+            backdrop-filter: blur(2px);
+            z-index: 10;
+            will-change: transform;
+        }
+
+        .grass {
+            background: #4caf50;
+            background-image: radial-gradient(circle at 20% 30%, #8bc34a, #2e7d32);
+            border-radius: 120px 120px 30px 30px;
+            padding: 8px 0;
+            box-shadow: inset 0 -10px 0 #1b5e20;
+            border-bottom: 3px solid #a56b2f;
+        }
+
+        .hole {
+            width: 130px;
+            height: 130px;
+            background: #3e2b22;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 12px 0 #1f140f, 0 12px 10px rgba(0,0,0,0.7);
+            border: 3px solid #2b1a0e;
+            transition: box-shadow 0.15s, transform 0.1s;
+            will-change: transform;
+        }
+
+        .hole:active {
+            transform: scale(0.98);
+        }
+
+        .hole::before {
+            content: '';
+            position: absolute;
+            top: -15px;
+            left: 10%;
+            width: 80%;
+            height: 25px;
+            background: rgba(0,0,0,0.25);
+            border-radius: 50%;
+            filter: blur(4px);
+        }
+
+        .mole {
+            width: 95%;
+            height: 100%;
+            position: absolute;
+            left: 2.5%;
+            top: 100%;
+            transition: top 0.2s cubic-bezier(0.22, 1.35, 0.58, 1);
+            cursor: pointer;
+            z-index: 20;
+            filter: drop-shadow(0 12px 5px rgba(0,0,0,0.5));
+            will-change: top;
+        }
+
+        .mole.up {
+            top: 5%;
+        }
+
+        .dust {
+            position: absolute;
+            bottom: 0;
+            left: 20%;
+            width: 60%;
+            height: 15px;
+            background: radial-gradient(circle, #8b5a2b, #5d3e1e 70%, transparent);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.15s;
+            z-index: 5;
+        }
+
+        .hole:hover .dust,
+        .mole.up + .dust {
+            opacity: 0.8;
+        }
+
+        .hammer {
+            position: fixed;
+            width: 80px;
+            height: 80px;
+            pointer-events: none;
+            z-index: 9999;
+            transform: rotate(-20deg) scale(1);
+            transition: transform 0.05s ease;
+            filter: drop-shadow(8px 12px 5px rgba(0,0,0,0.6));
+            will-change: transform;
+        }
+
+        .hammer.hit {
+            transform: rotate(-60deg) scale(1.2);
+        }
+
+        .timer-bar {
+            width: 220px;
+            height: 24px;
+            background: #2c2c2c;
+            border-radius: 40px;
+            overflow: hidden;
+            border: 3px solid #ffa726;
+            box-shadow: inset 0 2px 5px #00000055;
+        }
+
+        .timer-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #f57c00, #ffb300);
+            transition: width 0.3s linear;
+            border-radius: 40px;
+        }
+
+        .modal {
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(8px);
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #fff7e6;
+            border-radius: 50px;
+            border: 6px solid #ffaa33;
+            box-shadow: 0 20px 0 #b95b0d, 0 30px 30px black;
+            animation: popIn 0.25s cubic-bezier(0.18, 1.3, 0.6, 1);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .modal-content::-webkit-scrollbar-track {
+            background: #f1e2c0;
+            border-radius: 10px;
+        }
+        .modal-content::-webkit-scrollbar-thumb {
+            background: #b95b0d;
+            border-radius: 10px;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.6) rotate(-5deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
+
+        .floating-point {
+            position: fixed;
+            font-family: 'Bungee', cursive;
+            font-size: 2.3rem;
+            color: gold;
+            text-shadow: 3px 3px 0 #000, 0 0 10px #ffd700;
+            pointer-events: none;
+            z-index: 1000;
+            animation: floatUp 0.8s ease-out forwards;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-100px) scale(1.2); }
+        }
+
+        .screen-shield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            z-index: 99999;
+            pointer-events: none;
+            display: none;
+        }
+        .screen-shield.active {
+            display: block;
+            background: rgba(255,0,0,0.15);
+            backdrop-filter: blur(3px);
+        }
+
+        .shake {
+            animation: shake 0.15s ease-in-out;
+        }
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            50% { transform: translateX(4px); }
+            75% { transform: translateX(-2px); }
+            100% { transform: translateX(0); }
+        }
+
+        .start-btn {
+            background: linear-gradient(145deg, #4caf50, #2e7d32);
+            box-shadow: 0 10px 0 #1b5e20, 0 5px 15px rgba(0,0,0,0.4);
+        }
+
+        /* Radio tùy chỉnh cho đúng/sai */
+        .tf-option {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 8px 12px;
+            background: #f0e9d8;
+            border-radius: 40px;
+            border: 2px solid #d4a76a;
+            margin-bottom: 8px;
+        }
+        .tf-option span:first-child {
+            font-weight: bold;
+            min-width: 30px;
+            color: #5d3a1a;
+        }
+        .tf-radio-group {
+            display: flex;
+            gap: 10px;
+        }
+        .tf-radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: #e5d5b5;
+            padding: 5px 15px;
+            border-radius: 30px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.1s;
+        }
+        .tf-radio-group label.selected-true {
+            background: #4caf50;
+            color: white;
+            border-color: #2e7d32;
+        }
+        .tf-radio-group label.selected-false {
+            background: #f44336;
+            color: white;
+            border-color: #b71c1c;
+        }
+        .tf-radio-group input {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="leaf-container" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0;"></div>
+    <div id="screen-shield" class="screen-shield"></div>
+
+    <svg id="hammer-cursor" class="hammer" viewBox="0 0 100 100">
+        <defs>
+            <filter id="hammer-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="6" dy="8" stdDeviation="5" flood-opacity="0.6"/>
+            </filter>
+        </defs>
+        <rect x="40" y="40" width="18" height="48" fill="#8B4513" rx="5" filter="url(#hammer-shadow)" />
+        <rect x="15" y="15" width="70" height="35" fill="#AAA" rx="10" filter="url(#hammer-shadow)" />
+        <rect x="22" y="12" width="58" height="10" fill="#777" rx="5" />
+        <circle cx="50" cy="30" r="8" fill="#555" />
+    </svg>
+
+    <div id="game-container" class="max-w-4xl w-full mx-4 p-5 relative z-10">
+        <div class="grass mb-2 rounded-t-4xl">
+            <div class="flex flex-col md:flex-row justify-between items-center p-5">
+                <h1 class="game-font text-3xl md:text-4xl text-yellow-300 drop-shadow-[0_4px_0_#b57c1c] mb-4 md:mb-0">
+                    ⚡ ĐẬP CHUỘT LỊCH SỬ 10 ⚡
+                </h1>
+                <div class="flex gap-4 flex-wrap justify-center">
+                    <div class="bg-amber-100 px-5 py-3 rounded-2xl border-4 border-amber-700 shadow-inner">
+                        <span class="font-bold text-amber-800">🏆 ĐIỂM</span>
+                        <span id="score" class="game-font text-3xl text-amber-900 ml-2">0</span>
+                    </div>
+                    <div class="bg-blue-100 px-5 py-3 rounded-2xl border-4 border-blue-700 shadow-inner">
+                        <span class="font-bold text-blue-800">⏳ THỜI GIAN</span>
+                        <span id="timer" class="game-font text-3xl text-blue-900 ml-2">180</span><span class="text-lg">s</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-center pb-4">
+                <div class="timer-bar">
+                    <div id="timer-fill" class="timer-fill" style="width:100%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="start-screen" class="text-center py-20 bg-[#8b5a2b] rounded-b-3xl border-t-4 border-yellow-800">
+            <p class="text-white text-xl mb-4 drop-shadow">📘 Ôn tập Lịch sử 10 - Đập chuột trả lời câu hỏi</p>
+            <p class="text-amber-200 mb-8 max-w-md mx-auto">Mỗi câu đúng +10 điểm. Bao gồm trắc nghiệm và đúng/sai nhiều ý.</p>
+            <button onclick="window.startGame()" class="game-font start-btn text-white text-3xl px-12 py-5 rounded-full transform transition hover:translate-y-1 hover:shadow-[0_8px_0_#1b5e20] active:translate-y-2 active:shadow-[0_4px_0_#1b5e20]">
+                🚀 BẮT ĐẦU
+            </button>
+        </div>
+
+        <div id="game-grid" class="hidden grid grid-cols-3 gap-6 justify-items-center py-10 bg-[#8b5a2b] rounded-b-3xl border-t-4 border-yellow-800 relative">
+            <div class="hole"><div class="mole" data-index="0"></div><div class="dust"></div></div>
+            <div class="hole"><div class="mole" data-index="1"></div><div class="dust"></div></div>
+            <div class="hole"><div class="mole" data-index="2"></div><div class="dust"></div></div>
+            <div class="hole"><div class="mole" data-index="3"></div><div class="dust"></div></div>
+            <div class="hole"><div class="mole" data-index="4"></div><div class="dust"></div></div>
+            <div class="hole"><div class="mole" data-index="5"></div><div class="dust"></div></div>
+        </div>
+    </div>
+
+    <!-- Modal câu hỏi -->
+    <div id="question-modal" class="modal">
+        <div class="modal-content p-6 max-w-lg w-full mx-4">
+            <div class="flex items-center gap-3 mb-4 sticky top-0 bg-amber-50 pt-2 pb-2 z-10 border-b border-amber-200">
+                <span id="question-type-badge" class="game-font text-sm bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full"></span>
+                <span class="game-font text-yellow-600 text-2xl drop-shadow">❓</span>
+            </div>
+            <div id="question-text" class="text-xl font-bold text-gray-800 mb-4 leading-relaxed pr-2"></div>
+            <div id="options-container" class="space-y-3 max-h-60 overflow-y-auto pr-2"></div>
+            <div id="multi-tf-container" class="space-y-3 max-h-60 overflow-y-auto pr-2 hidden"></div>
+            <div class="mt-4 text-center">
+                <button id="submit-multi-tf" class="game-font bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-full text-xl shadow hidden">KIỂM TRA</button>
+            </div>
+            <div id="feedback" class="mt-4 text-2xl font-black text-center hidden sticky bottom-0 bg-amber-50 pt-2 pb-2"></div>
+        </div>
+    </div>
+
+    <div id="end-modal" class="modal">
+        <div class="modal-content p-10 text-center max-w-sm w-full">
+            <h2 class="game-font text-5xl text-red-600 mb-3">⏰ HẾT GIỜ!</h2>
+            <p class="text-gray-700 text-xl mb-2">Tổng điểm của bạn:</p>
+            <p id="final-score" class="game-font text-7xl text-green-600 mb-6">0</p>
+            <button onclick="location.reload()" class="game-font bg-blue-500 hover:bg-blue-400 text-white px-8 py-4 rounded-full text-2xl shadow-[0_8px_0_#1e3a8a] w-full transition active:translate-y-1">CHƠI LẠI</button>
+        </div>
+    </div>
+
+    <div id="cheat-modal" class="modal">
+        <div class="modal-content p-10 text-center max-w-sm w-full border-red-600">
+            <h2 class="game-font text-4xl text-red-600 mb-4">🚫 PHÁT HIỆN GIAN LẬN!</h2>
+            <p class="text-gray-700 text-lg mb-6">Bạn đã rời khỏi game hoặc chụp màn hình. Điểm số bị hủy.</p>
+            <button onclick="location.reload()" class="game-font bg-red-500 hover:bg-red-400 text-white px-8 py-4 rounded-full text-2xl shadow-[0_8px_0_#991b1b] w-full">CHƠI LẠI</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // --- Tạo lá rơi ---
+            function createLeaves() {
+                const container = document.getElementById('leaf-container');
+                for (let i = 0; i < 12; i++) {
+                    const leaf = document.createElement('div');
+                    leaf.className = 'leaf';
+                    leaf.style.left = Math.random() * 100 + '%';
+                    leaf.style.animationDuration = (15 + Math.random() * 20) + 's';
+                    leaf.style.animationDelay = Math.random() * 5 + 's';
+                    leaf.innerHTML = ['🍂','🍃','🌿','🍀'][Math.floor(Math.random()*4)];
+                    leaf.style.fontSize = (15 + Math.floor(Math.random()*20)) + 'px';
+                    leaf.style.opacity = 0.3 + Math.random()*0.3;
+                    container.appendChild(leaf);
+                }
+            }
+            createLeaves();
+
+            // --- Âm thanh (giữ nguyên) ---
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            function playSound(type) {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const now = audioCtx.currentTime;
+
+                switch(type) {
+                    case 'hit':
+                        const oscHit = audioCtx.createOscillator();
+                        const gainHit = audioCtx.createGain();
+                        oscHit.connect(gainHit);
+                        gainHit.connect(audioCtx.destination);
+                        oscHit.type = 'sine';
+                        oscHit.frequency.setValueAtTime(200, now);
+                        oscHit.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+                        gainHit.gain.setValueAtTime(0.6, now);
+                        gainHit.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                        oscHit.start();
+                        oscHit.stop(now + 0.12);
+                        break;
+                    case 'pop':
+                        const oscPop = audioCtx.createOscillator();
+                        const gainPop = audioCtx.createGain();
+                        oscPop.connect(gainPop);
+                        gainPop.connect(audioCtx.destination);
+                        oscPop.type = 'triangle';
+                        oscPop.frequency.setValueAtTime(600, now);
+                        oscPop.frequency.exponentialRampToValueAtTime(900, now + 0.1);
+                        gainPop.gain.setValueAtTime(0.2, now);
+                        gainPop.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                        oscPop.start();
+                        oscPop.stop(now + 0.1);
+                        break;
+                    case 'correct':
+                        const oscCor = audioCtx.createOscillator();
+                        const gainCor = audioCtx.createGain();
+                        oscCor.connect(gainCor);
+                        gainCor.connect(audioCtx.destination);
+                        oscCor.type = 'sine';
+                        oscCor.frequency.setValueAtTime(523, now);
+                        oscCor.frequency.setValueAtTime(659, now + 0.15);
+                        oscCor.frequency.setValueAtTime(784, now + 0.3);
+                        gainCor.gain.setValueAtTime(0.4, now);
+                        gainCor.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+                        oscCor.start();
+                        oscCor.stop(now + 0.45);
+                        break;
+                    case 'wrong':
+                        const oscWr = audioCtx.createOscillator();
+                        const gainWr = audioCtx.createGain();
+                        oscWr.connect(gainWr);
+                        gainWr.connect(audioCtx.destination);
+                        oscWr.type = 'sawtooth';
+                        oscWr.frequency.setValueAtTime(200, now);
+                        oscWr.frequency.linearRampToValueAtTime(80, now + 0.4);
+                        gainWr.gain.setValueAtTime(0.3, now);
+                        gainWr.gain.linearRampToValueAtTime(0.01, now + 0.4);
+                        oscWr.start();
+                        oscWr.stop(now + 0.4);
+                        break;
+                    case 'gameover':
+                        const oscGo = audioCtx.createOscillator();
+                        const gainGo = audioCtx.createGain();
+                        oscGo.connect(gainGo);
+                        gainGo.connect(audioCtx.destination);
+                        oscGo.type = 'sawtooth';
+                        oscGo.frequency.setValueAtTime(300, now);
+                        oscGo.frequency.linearRampToValueAtTime(100, now + 0.6);
+                        gainGo.gain.setValueAtTime(0.5, now);
+                        gainGo.gain.linearRampToValueAtTime(0.01, now + 0.8);
+                        oscGo.start();
+                        oscGo.stop(now + 0.8);
+                        break;
+                }
+            }
+
+            // --- Dữ liệu câu hỏi Lịch sử mới (ĐÃ SỬA ĐÁP ÁN) ---
+            const quizData = [
+                // Phần I: Trắc nghiệm (18 câu) - ĐÃ SỬA CÂU 5 VÀ CÂU 10
+                { type: 'mc', q: "Câu 1. Dưới triều đại nhà Lê (thế kỉ XV), bộ luật thành văn nào sau đây được ban hành?", a: "C. Quốc triều hình luật.", options: [
+                    "A. Hình luật.",
+                    "B. Hình thư.",
+                    "C. Quốc triều hình luật.",
+                    "D. Hoàng Việt luật lệ."
+                ] },
+                { type: 'mc', q: "Câu 2. Triều đại nào mở đầu cho thời đại phong kiến độc lập của dân tộc ta?", a: "B. Triều Ngô.", options: [
+                    "A. Triều Tiền Lý.",
+                    "B. Triều Ngô.",
+                    "C. Triều Lê.",
+                    "D. Triều Nguyễn."
+                ] },
+                { type: 'mc', q: "Câu 3. Việc cho dựng bia đá ở Văn Miếu Quốc Tử giám thể hiện chính sách nào sau đây của các triều đại phong kiến Việt Nam?", a: "A. Nhà nước coi trọng giáo dục, khoa cử.", options: [
+                    "A. Nhà nước coi trọng giáo dục, khoa cử.",
+                    "B. Ghi danh những anh hùng có công với nước.",
+                    "C. Ghi lại tiến trình phát triển của lịch sử dân tộc.",
+                    "D. Đề cao vai trò của sản xuất nông nghiệp."
+                ] },
+                { type: 'mc', q: "Câu 4. Dưới thời Lý, Trần, Lê sơ, các địa điểm trao đổi hàng hóa với nước ngoài được hình thành ở vùng biên giới, như:", a: "D. Vân Đồn (Quảng Ninh), Lạch Trường (Thanh Hóa),…", options: [
+                    "A. Thăng Long (Hà Nội), Vân Đồn (Quảng Ninh),…",
+                    "B. Thanh Hà (Thừa Thiên Huế), Hội An (Quảng Nam),…",
+                    "C. Gia Định (TP. Hồ Chí Minh), Thăng Long (Hà Nội),…",
+                    "D. Vân Đồn (Quảng Ninh), Lạch Trường (Thanh Hóa),…"
+                ] },
+                { type: 'mc', q: "Câu 5. Ở Đại Việt, thời phát triển, tư tưởng nào được xem là tiêu chuẩn đạo đức cao nhất để đánh giá con người và các hoạt động xã hội?", a: "A. Yêu nước, thương dân.", options: [
+                    "A. Yêu nước, thương dân.",
+                    "B. Yêu chuộng hòa bình.",
+                    "C. Tương thân tương ái.",
+                    "D. Nhân nghĩa, đoàn kết."
+                ] }, // Đã sửa từ D sang A
+                { type: 'mc', q: "Câu 6. Ở Đại Việt, dưới thời kì nào Nho giáo được nâng lên địa vị độc tôn?", a: "D. Lê sơ.", options: [
+                    "A. Tiền Lê.",
+                    "B. Lý.",
+                    "C. Trần.",
+                    "D. Lê sơ."
+                ] },
+                { type: 'mc', q: "Câu 7. Một trong những tác phẩm văn học chữ Hán tiêu biểu của Trần Quốc Tuấn là", a: "B. Hịch tướng sĩ.", options: [
+                    "A. Chiếu dời đô.",
+                    "B. Hịch tướng sĩ.",
+                    "C. Bình Ngô Đại Cáo.",
+                    "D. Tụng giá hoàn kinh sư."
+                ] },
+                { type: 'mc', q: "Câu 8. Ngành kinh tế chủ đạo của nhân dân Đại Việt thời phong kiến là", a: "A. nông nghiệp", options: [
+                    "A. nông nghiệp",
+                    "B. công nghiệp.",
+                    "C. thủ công nghiệp.",
+                    "D. đi biển."
+                ] },
+                { type: 'mc', q: "Câu 9. Nội dung nào dưới đây không phản ánh đúng những thành tựu tiêu biểu của thủ công nghiệp Đại Việt?", a: "D. Sản xuất thủ công nghiệp là ngành kinh tế chủ đạo của nhân dân Đại Việt.", options: [
+                    "A. Thủ công nghiệp truyền thống tiếp tục được duy trì và phát triển.",
+                    "B. Xuất hiện nhiều ngành nghề mới, như: làm tranh sơn mài, làm giấy,…",
+                    "C. Thế kỉ XVI - XVII, xuất hiện nhiều làng nghề thủ công nổi tiếng cả nước.",
+                    "D. Sản xuất thủ công nghiệp là ngành kinh tế chủ đạo của nhân dân Đại Việt."
+                ] },
+                { type: 'mc', q: "Câu 10. Nội dung nào dưới đây không phản ánh đúng ý nghĩa của văn minh Đại Việt?", a: "D. Có sức lan tỏa và ảnh hưởng lớn đến sự phát triển của văn minh Trung Hoa.", options: [
+                    "A. Thể hiện sức sáng tạo, sự lao động bền bỉ của các thế hệ người Việt.",
+                    "B. Tạo nên sức mạnh dân tộc trong các cuộc đấu tranh bảo vệ Tổ quốc.",
+                    "C. Góp phần bảo tồn, giữ gìn và phát huy thành tựu của văn minh Việt cổ.",
+                    "D. Có sức lan tỏa và ảnh hưởng lớn đến sự phát triển của văn minh Trung Hoa."
+                ] }, // Đã sửa từ A sang D
+                { type: 'mc', q: "Câu 11. Văn minh Đại Việt có ưu điểm gì?", a: "A. Phát triển rực rỡ, toàn diện trên mọi lĩnh vực của đời sống xã hội.", options: [
+                    "A. Phát triển rực rỡ, toàn diện trên mọi lĩnh vực của đời sống xã hội.",
+                    "B. Chứa đựng nhiều yếu tố duy tâm trong đời sống văn hóa tinh thần.",
+                    "C. Thúc đẩy sự phát triển mạnh mẽ của các lĩnh vực khoa học, kĩ thuật.",
+                    "D. Góp phần tạo ra tính năng động, sáng tạo của các cá nhân và xã hội."
+                ] },
+                { type: 'mc', q: "Câu 12. Việc đề cao Nho giáo của các nhà nước phong kiến Đại Việt đã không dẫn đến hệ quả nào dưới đây?", a: "D. Tạo điều kiện giao lưu giữa các tôn giáo làm đậm đà bản sắc dân tộc.", options: [
+                    "A. Giữ ổn định trật tự kỷ cương của nhà nước phong kiến.",
+                    "B. Tạo ra sự bảo thủ, chậm cải cách trước những biến đổi xã hội.",
+                    "C. Nguy cơ tụt hậu, đứng trước sự xâm lược của thực dân phương Tây.",
+                    "D. Tạo điều kiện giao lưu giữa các tôn giáo làm đậm đà bản sắc dân tộc."
+                ] },
+                { type: 'mc', q: "Câu 13. Các nhà nước phong kiến Việt Nam được xây dựng theo thể chế", a: "D. Quân chủ chuyên chế.", options: [
+                    "A. Quân chủ lập hiến.",
+                    "B. Chiếm hữu nô lệ.",
+                    "C. Dân chủ chủ nô.",
+                    "D. Quân chủ chuyên chế."
+                ] },
+                { type: 'mc', q: "Câu 14. Bộ máy nhà nước chuyên chế trung ương tập quyền của Đại Việt được hoàn chỉnh dưới triều đại nào?", a: "C. Thời Lê sơ.", options: [
+                    "A. Thời Lý.",
+                    "B. Thời Trần.",
+                    "C. Thời Lê sơ.",
+                    "D. Thời Hồ."
+                ] },
+                { type: 'mc', q: "Câu 15. Trung tâm chính trị - văn hóa và đô thị lớn nhất Đại Việt trong các thế kỷ X-XV là", a: "C. Thăng Long.", options: [
+                    "A. Phố Hiến.",
+                    "B. Thanh Hà.",
+                    "C. Thăng Long.",
+                    "D. Hội An."
+                ] },
+                { type: 'mc', q: "Câu 16. Trong các thế kỉ từ XV - XVI, các tôn giáo nào được du nhập vào Đại Việt?", a: "B. Hồi giáo, Thiên Chúa giáo.", options: [
+                    "A. Nho giáo, Đạo giáo.",
+                    "B. Hồi giáo, Thiên Chúa giáo.",
+                    "C. Phật giáo, Nho giáo.",
+                    "D. Phật giáo, Hin-đu giáo."
+                ] },
+                { type: 'mc', q: "Câu 17. Ngô Sĩ Liên và các sử thần triều Hậu Lê đã biên soạn bộ sử nào dưới đây?", a: "B. Đại Việt sử kí toàn thư.", options: [
+                    "A. Đại Việt sử kí.",
+                    "B. Đại Việt sử kí toàn thư.",
+                    "C. Lam Sơn thực lục.",
+                    "D. Đại Việt thông sử."
+                ] },
+                { type: 'mc', q: "Câu 18. Ở Đại Việt, Phật giáo phát triển mạnh mẽ nhất dưới thời kì nào?", a: "C. Lý - Trần.", options: [
+                    "A. Ngô - Đinh.",
+                    "B. Đinh - Tiền Lê.",
+                    "C. Lý - Trần.",
+                    "D. Lê - Nguyễn."
+                ] },
+                // Phần II: Câu hỏi đúng/sai nhiều ý (5 câu) - ĐÃ SỬA CÂU 2 VÀ CÂU 3
+                { type: 'multi-tf', 
+                  q: "Câu 1. Đọc đoạn tư liệu sau đây: Sau khi lên ngôi vua, Thái tổ đã lo ngay đến việc đặt luật Pháp. Thái Tông và Nhân Tông ban hành thêm một số điều luật về xét xử kiện tụng, sở hữu tài sản. Năm 1483, Thánh Tông quyết định triệu tập các đại thần biên soạn một bộ luật chính thức của triều đại mình, thường được gọi là “Luật Hồng Đức”. (Đại cương lịch sử Việt Nam, trang 323)",
+                  parts: [
+                      "a) Bộ Luật Hồng Đức được khởi thảo thời vua Lê Thái Tổ và hoàn chỉnh dưới thời Lê Thánh Tông.",
+                      "b) Bộ Luật Hồng Đức có tham khảo bộ luật Gia Long và sao chép luật của nhà Thanh bên Trung Quốc.",
+                      "c) Bộ Luật Hồng Đức được xem là bộ luật tiến bộ nhất thời phong kiến Việt Nam.",
+                      "d) Bộ Luật Hồng Đức là bộ luật thành văn đầu tiên của Đại Việt."
+                  ],
+                  answers: [true, false, true, false] // a Đ, b S, c Đ, d S (giữ nguyên)
+                },
+                { type: 'multi-tf',
+                  q: "Câu 2. Đọc đoạn tư liệu sau đây: Triều Lê sơ thành lập, có thể được coi như một bước ngoặt lịch sử, trong những điều kiện thuận lợi cho những yếu tố phong kiến phát triển. Thiết chế - ý thức hệ phong kiến mà nhà Minh áp đặt trong hai thập kỉ thuộc Minh đã để lại những hệ quả sâu sắc… Ở đây, một nhà nước chuyên chế toàn năng, can thiệp vào mọi mặt đời sống xã hội, đã được xác lập. Đẳng cấp quan liêu được tuyển lựa qua khoa cử, đã trở thành lực lượng thống trị, ngày càng xa cách khối quần chúng bình dân làng xã. Trên danh nghĩa, Nho giáo được coi như một hệ tư tưởng phong kiến chính thống độc tôn. Thiết chế - hệ tư tưởng phong kiến đến giai đoạn này, đã được hoàn chỉnh”. (Nguyễn Quang Ngọc, Tiến trình lịch sử Việt Nam, tr.129)",
+                  parts: [
+                      "a) Đoạn tư liệu phản ánh thành tựu của văn minh Đại Việt dưới thời kì Lê sơ trên một số lĩnh vực chính trị, văn hóa, giáo dục.",
+                      "b) Thiết chế chính trị của vương triều Lê sơ chịu ảnh hưởng sâu sắc từ nhà Minh (Trung Quốc).",
+                      "c) Dưới thời kì Lê sơ, Nho giáo đã chính thức được nâng lên địa vị độc tôn.",
+                      "d) Tính quan liêu, chuyên chế là một đặc điểm nổi bật của bộ máy nhà nước dưới thời kì vương triều Lê sơ."
+                  ],
+                  answers: [false, true, true, true] // ĐÃ SỬA: a Sai, b Đúng, c Đúng, d Đúng
+                },
+                { type: 'multi-tf',
+                  q: "Câu 3. Đọc đoạn tư liệu sau đây: “Các kiến trúc cung đình tập trung ở kinh thành Thăng Long, nhất là trong Cấm Thành. Từ thời nhà Lý, nhiều cung điện, trung tâm là điện Càn Nguyên, đã được xây dựng. Tại Di tích Hoàng thành Thăng Long (phát lộ năm 2003 – 2004), đã tìm thấy di tích cung điện, các móng trụ, giếng nước, hệ thống cống thoát nước, cùng rất nhiều vật liệu xây dựng như: các loại gạch, ngói, đá kê chân cột và những đồ đất nung trang trí rất đẹp,… (Phan Huy Lê, Lịch sử Việt Nam, Tập I, tr.594)",
+                  parts: [
+                      "a) Đoạn tư liệu phản ánh thành tựu về kĩ thuật xây dựng của cư dân Đại Việt dưới thời kì nhà Lý.",
+                      "b) Kinh thành Thăng Long là một công trình kiến trúc tiêu biểu của văn minh Đại Việt thuộc dòng kiến trúc cung đình.",
+                      "c) Sự phát triển của kinh thành Thăng Long chỉ có thể được phục dựng lại thông qua các di tích tìm thấy tại Hoàng thành Thăng Long.",
+                      "d) Trung tâm của kinh thành Thăng Long là điện Càn Nguyên, bắt đầu được xây dựng từ thời kì nhà Lý."
+                  ],
+                  answers: [false, true, false, true] // ĐÃ SỬA: a Sai, b Đúng, c Sai, d Đúng
+                },
+                { type: 'multi-tf',
+                  q: "Câu 4. Đọc đoạn tư liệu sau đây: Trong Chiếu dời đô, vua Lý Thái Tổ đã nói rõ dời chuyển kinh đô là một việc trọng đại “không thể theo ý riêng tự dời” mà để “mưu nghiệp lớn”, “làm kế cho con cháu muôn vạn đời, trên kính mệnh trời, dưới theo ý dân”. Vua Lý Thái Tổ lúc này đã có một con mắt đại ngàn, một tầm nhìn chiến lược vô cùng hệ trọng đối với vận mệnh lâu dài của dân tộc là chọn thành Đại La – nơi hội tụ đầy đủ mọi điều kiện về kinh tế, chính trị và xã hội làm kinh đô của một quốc gia thống nhất và thịnh vượng. (Vũ Duy Mền, Lịch sử Việt Nam, Tập 2, tr.154)",
+                  parts: [
+                      "a) Khi lên ngôi, vua Lý Thái Tổ đã quyết định cho dời đô từ vùng núi non hiểm trở về trung tâm đồng bằng.",
+                      "b) Thành Đại La – vốn là kinh đô của một số triều đại phong kiến độc lập của Việt Nam trước đó, là nơi hội tụ mọi điều kiện thuận lợi để phát triển trong điều kiện mới.",
+                      "c) Việc dời đô của Lý Thái Tổ chủ yếu xuất phát từ nhu cầu phòng thủ, bảo vệ đất nước.",
+                      "d) Việc Lý Công Uẩn rời đô ra Đại La (Hà Nội) đã mở ra thời kì phát triển rực rỡ của văn minh Đại Việt."
+                  ],
+                  answers: [true, false, false, true] // a Đ, b S, c S, d Đ (giữ nguyên)
+                },
+                { type: 'multi-tf',
+                  q: "Câu 5. Đọc đoạn tư liệu sau đây: Thủ công nghiệp nhà nước do triều đình trực tiếp quản lí được chú trọng. Cục Bách tác và các quan xưởng tại Thăng long là nơi sản xuất đồ dùng phục vụ nhà nước, vua, quan trong triều đình. Các hoạt động sản xuất chủ yếu là đúc tiền kim loại, đóng thuyền lớn, sản xuất vũ khí cho quân đội,... (SGK Lịch sử 10, bộ Cánh Diều, trang 72)",
+                  parts: [
+                      "a) Cục Bách tác là tên gọi của các xưởng thủ công nhà nước.",
+                      "b) Cục Bách tác chuyên sản xuất đồ dùng phục vụ nhà nước, vua, quan trong triều đình.",
+                      "c) Đúc tiền kim loại, đóng thuyền lớn, sản xuất vũ khí cho quân đội là hoạt động sản xuất chủ yếu của thủ công nghiệp dân gian.",
+                      "d) Các sản phẩm do các quan xưởng sản xuất có thể trao đổi mua bán trong nhân dân."
+                  ],
+                  answers: [true, true, false, false] // a Đ, b Đ, c S, d S (giữ nguyên)
+                }
+            ];
+
+            // Quản lý số lần sử dụng câu hỏi (tối đa 2 lần/câu)
+            let questionUsage = new Array(quizData.length).fill(0);
+            const MAX_USAGE = 2;
+
+            function getRandomQuestion() {
+                let available = [];
+                for (let i = 0; i < quizData.length; i++) {
+                    if (questionUsage[i] < MAX_USAGE) available.push(i);
+                }
+                if (available.length === 0) {
+                    questionUsage.fill(0);
+                    available = quizData.map((_, i) => i);
+                }
+                const randIdx = available[Math.floor(Math.random() * available.length)];
+                questionUsage[randIdx]++;
+                return quizData[randIdx];
+            }
+
+            // DOM elements
+            const moles = document.querySelectorAll('.mole');
+            const scoreSpan = document.getElementById('score');
+            const timerSpan = document.getElementById('timer');
+            const timerFill = document.getElementById('timer-fill');
+            const hammer = document.getElementById('hammer-cursor');
+            const startScreen = document.getElementById('start-screen');
+            const gameGrid = document.getElementById('game-grid');
+            const questionModal = document.getElementById('question-modal');
+            const questionTypeBadge = document.getElementById('question-type-badge');
+            const qText = document.getElementById('question-text');
+            const optionsContainer = document.getElementById('options-container');
+            const multiTfContainer = document.getElementById('multi-tf-container');
+            const submitMultiBtn = document.getElementById('submit-multi-tf');
+            const feedback = document.getElementById('feedback');
+            const endModal = document.getElementById('end-modal');
+            const cheatModal = document.getElementById('cheat-modal');
+            const shield = document.getElementById('screen-shield');
+
+            let score = 0;
+            let lastHole = null;
+            let timeUp = false;
+            let gameActive = false;
+            let cheatDetected = false;
+            let timeLeft = 180;
+            let countdownInterval = null;
+            let peepTimeout = null;
+            let currentMultiAnswers = [];
+
+            // Tạo hình chuột (giữ nguyên)
+            const moleSVG = `
+                <svg class="mole-svg" viewBox="0 0 120 120" style="width:100%; height:auto;">
+                    <circle cx="60" cy="60" r="50" fill="#8B5A2B" stroke="#5D3A1A" stroke-width="4"/>
+                    <ellipse cx="30" cy="30" rx="18" ry="14" fill="#A0522D" transform="rotate(-20 30 30)" stroke="#5D3A1A" stroke-width="3"/>
+                    <ellipse cx="28" cy="28" rx="10" ry="7" fill="#C17646" transform="rotate(-20 28 28)"/>
+                    <ellipse cx="90" cy="30" rx="18" ry="14" fill="#A0522D" transform="rotate(20 90 30)" stroke="#5D3A1A" stroke-width="3"/>
+                    <ellipse cx="92" cy="28" rx="10" ry="7" fill="#C17646" transform="rotate(20 92 28)"/>
+                    <circle cx="40" cy="50" r="10" fill="white" stroke="#333" stroke-width="2"/>
+                    <circle cx="44" cy="54" r="4" fill="black"/>
+                    <circle cx="46" cy="52" r="1.5" fill="white"/>
+                    <circle cx="80" cy="50" r="10" fill="white" stroke="#333" stroke-width="2"/>
+                    <circle cx="76" cy="54" r="4" fill="black"/>
+                    <circle cx="74" cy="52" r="1.5" fill="white"/>
+                    <ellipse cx="60" cy="70" rx="12" ry="8" fill="#FF9E9E" stroke="#8B3A3A" stroke-width="2"/>
+                    <circle cx="60" cy="70" r="3" fill="#5D3A1A"/>
+                    <path d="M 20 70 Q 5 60 0 50" stroke="#555" stroke-width="2.5" fill="none"/>
+                    <path d="M 20 80 Q 5 80 0 90" stroke="#555" stroke-width="2.5" fill="none"/>
+                    <path d="M 100 70 Q 115 60 120 50" stroke="#555" stroke-width="2.5" fill="none"/>
+                    <path d="M 100 80 Q 115 80 120 90" stroke="#555" stroke-width="2.5" fill="none"/>
+                    <path d="M 50 85 Q 60 95 70 85" stroke="#8B3A3A" stroke-width="3" fill="none"/>
+                </svg>
+            `;
+            moles.forEach(m => m.innerHTML = moleSVG);
+
+            // Búa di chuyển
+            window.addEventListener('mousemove', (e) => {
+                requestAnimationFrame(() => {
+                    hammer.style.left = (e.clientX - 40) + 'px';
+                    hammer.style.top = (e.clientY - 40) + 'px';
+                });
+            });
+
+            window.addEventListener('mousedown', () => {
+                hammer.classList.add('hit');
+                playSound('hit');
+                document.getElementById('game-container').classList.add('shake');
+                setTimeout(() => document.getElementById('game-container').classList.remove('shake'), 150);
+            });
+            window.addEventListener('mouseup', () => hammer.classList.remove('hit'));
+
+            function showFloatingPoint(x, y, text, color) {
+                const div = document.createElement('div');
+                div.className = 'floating-point';
+                div.style.left = (x - 20) + 'px';
+                div.style.top = y + 'px';
+                div.style.color = color;
+                div.textContent = text;
+                document.body.appendChild(div);
+                setTimeout(() => div.remove(), 800);
+            }
+
+            function randomTime(min, max) {
+                return Math.round(Math.random() * (max - min) + min);
+            }
+
+            function randomHole() {
+                const idx = Math.floor(Math.random() * moles.length);
+                const hole = moles[idx];
+                if (hole === lastHole) return randomHole();
+                lastHole = hole;
+                return hole;
+            }
+
+            function peep() {
+                if (timeUp || !gameActive || cheatDetected) return;
+                const time = randomTime(1000, 1700);
+                const mole = randomHole();
+                mole.classList.add('up');
+                playSound('pop');
+                if (peepTimeout) clearTimeout(peepTimeout);
+                peepTimeout = setTimeout(() => {
+                    mole.classList.remove('up');
+                    if (!timeUp && gameActive && !cheatDetected) peep();
+                }, time);
+            }
+
+            function startGame() {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                startScreen.classList.add('hidden');
+                gameGrid.classList.remove('hidden');
+                score = 0;
+                scoreSpan.textContent = '0';
+                timeUp = false;
+                gameActive = true;
+                cheatDetected = false;
+                timeLeft = 180;
+                timerSpan.textContent = timeLeft;
+                timerFill.style.width = '100%';
+                questionUsage.fill(0);
+                peep();
+
+                if (countdownInterval) clearInterval(countdownInterval);
+                countdownInterval = setInterval(() => {
+                    if (cheatDetected || !gameActive) return;
+                    timeLeft--;
+                    timerSpan.textContent = timeLeft;
+                    timerFill.style.width = (timeLeft / 180 * 100) + '%';
+                    if (timeLeft <= 0) {
+                        clearInterval(countdownInterval);
+                        timeUp = true;
+                        gameActive = false;
+                        playSound('gameover');
+                        endGame();
+                    }
+                }, 1000);
+
+                endModal.classList.remove('active');
+                cheatModal.classList.remove('active');
+            }
+
+            function endGame() {
+                endModal.classList.add('active');
+                document.getElementById('final-score').textContent = score;
+                moles.forEach(m => m.classList.remove('up'));
+                if (peepTimeout) clearTimeout(peepTimeout);
+            }
+
+            // Anti-cheat
+            window.addEventListener('blur', () => {
+                if (gameActive && !cheatDetected) handleCheat();
+            });
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && gameActive && !cheatDetected) handleCheat();
+            });
+            window.addEventListener('keyup', (e) => {
+                if (e.key === 'PrintScreen') {
+                    shield.classList.add('active');
+                    setTimeout(() => shield.classList.remove('active'), 400);
+                    if (gameActive && !cheatDetected) handleCheat();
+                }
+            });
+            document.addEventListener('copy', (e) => {
+                if (gameActive && !cheatDetected) handleCheat();
+            });
+            document.addEventListener('cut', (e) => {
+                if (gameActive && !cheatDetected) handleCheat();
+            });
+
+            function handleCheat() {
+                cheatDetected = true;
+                gameActive = false;
+                timeUp = true;
+                if (countdownInterval) clearInterval(countdownInterval);
+                if (peepTimeout) clearTimeout(peepTimeout);
+                moles.forEach(m => m.classList.remove('up'));
+                cheatModal.classList.add('active');
+                playSound('wrong');
+            }
+
+            window.addEventListener('beforeunload', (e) => {
+                if (gameActive && !cheatDetected) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+
+            // Click vào chuột
+            moles.forEach(mole => mole.addEventListener('click', function(e) {
+                if (!e.isTrusted || !gameActive || cheatDetected || !this.classList.contains('up')) return;
+                const x = e.clientX;
+                const y = e.clientY;
+
+                this.classList.remove('up');
+                gameActive = false;
+                if (peepTimeout) clearTimeout(peepTimeout);
+                showQuestion(x, y);
+            }));
+
+            function showQuestion(mouseX, mouseY) {
+                feedback.classList.add('hidden');
+                submitMultiBtn.classList.add('hidden');
+                optionsContainer.classList.remove('hidden');
+                multiTfContainer.classList.add('hidden');
+                multiTfContainer.innerHTML = '';
+
+                const currentQuestion = getRandomQuestion();
+
+                // Hiển thị loại câu hỏi
+                if (currentQuestion.type === 'multi-tf') {
+                    questionTypeBadge.textContent = 'ĐÚNG/SAI (NHIỀU Ý)';
+                } else {
+                    questionTypeBadge.textContent = 'TRẮC NGHIỆM';
+                }
+
+                qText.textContent = currentQuestion.q;
+                optionsContainer.innerHTML = '';
+
+                if (currentQuestion.type === 'multi-tf') {
+                    optionsContainer.classList.add('hidden');
+                    multiTfContainer.classList.remove('hidden');
+                    currentMultiAnswers = currentQuestion.answers;
+
+                    // Tạo giao diện cho từng ý
+                    currentQuestion.parts.forEach((part, idx) => {
+                        const div = document.createElement('div');
+                        div.className = 'tf-option';
+                        div.innerHTML = `
+                            <span>${String.fromCharCode(97 + idx)})</span>
+                            <span class="flex-1">${part}</span>
+                            <div class="tf-radio-group" data-idx="${idx}">
+                                <label class="true-label">
+                                    <input type="radio" name="tf-${idx}" value="true"> Đ
+                                </label>
+                                <label class="false-label">
+                                    <input type="radio" name="tf-${idx}" value="false"> S
+                                </label>
+                            </div>
+                        `;
+                        multiTfContainer.appendChild(div);
+                    });
+
+                    // Thêm sự kiện để thay đổi màu sắc khi chọn
+                    document.querySelectorAll('.tf-radio-group').forEach(group => {
+                        const radios = group.querySelectorAll('input');
+                        radios.forEach(radio => {
+                            radio.addEventListener('change', function() {
+                                const parentLabels = group.querySelectorAll('label');
+                                parentLabels.forEach(l => {
+                                    l.classList.remove('selected-true', 'selected-false');
+                                });
+                                if (this.value === 'true') {
+                                    this.closest('label').classList.add('selected-true');
+                                } else {
+                                    this.closest('label').classList.add('selected-false');
+                                }
+                            });
+                        });
+                    });
+
+                    submitMultiBtn.classList.remove('hidden');
+                    submitMultiBtn.onclick = () => checkMultiTfAnswer(mouseX, mouseY);
+                } else {
+                    // Trắc nghiệm
+                    const shuffledOptions = [...currentQuestion.options].sort(() => Math.random() - 0.5);
+                    shuffledOptions.forEach(opt => {
+                        const btn = document.createElement('button');
+                        btn.className = "w-full text-left p-3 rounded-xl border-2 border-amber-300 hover:border-amber-600 hover:bg-amber-100 transition font-medium text-base shadow-sm break-words";
+                        btn.textContent = opt;
+                        btn.onclick = () => checkAnswer(opt, currentQuestion.a, mouseX, mouseY);
+                        optionsContainer.appendChild(btn);
+                    });
+                }
+
+                questionModal.classList.add('active');
+            }
+
+            function checkAnswer(selected, correct, mouseX, mouseY) {
+                feedback.classList.remove('hidden');
+                const buttons = document.querySelectorAll('#options-container button');
+                buttons.forEach(b => b.disabled = true);
+
+                if (selected === correct) {
+                    score += 10;
+                    scoreSpan.textContent = score;
+                    feedback.textContent = "✅ CHÍNH XÁC! +10";
+                    feedback.className = "mt-4 text-2xl font-black text-center text-green-600";
+                    playSound('correct');
+                    showFloatingPoint(mouseX, mouseY, '+10', 'gold');
+                } else {
+                    feedback.textContent = "❌ SAI! Đáp án: " + correct;
+                    feedback.className = "mt-4 text-2xl font-black text-center text-red-600";
+                    playSound('wrong');
+                }
+
+                setTimeout(() => {
+                    questionModal.classList.remove('active');
+                    if (!timeUp && !cheatDetected) {
+                        gameActive = true;
+                        peep();
+                    } else if (timeUp) {
+                        endGame();
+                    }
+                }, 1800);
+            }
+
+            function checkMultiTfAnswer(mouseX, mouseY) {
+                // Thu thập các lựa chọn
+                const groups = document.querySelectorAll('.tf-radio-group');
+                let userAnswers = [];
+                let allAnswered = true;
+                groups.forEach((group, idx) => {
+                    const selected = group.querySelector('input:checked');
+                    if (selected) {
+                        userAnswers[idx] = selected.value === 'true';
+                    } else {
+                        allAnswered = false;
+                    }
+                });
+
+                if (!allAnswered) {
+                    alert('Vui lòng chọn Đúng/Sai cho tất cả các ý!');
+                    return;
+                }
+
+                // So sánh với đáp án
+                let correct = true;
+                for (let i = 0; i < currentMultiAnswers.length; i++) {
+                    if (userAnswers[i] !== currentMultiAnswers[i]) {
+                        correct = false;
+                        break;
+                    }
+                }
+
+                feedback.classList.remove('hidden');
+                if (correct) {
+                    score += 10;
+                    scoreSpan.textContent = score;
+                    feedback.textContent = "✅ CHÍNH XÁC! +10";
+                    feedback.className = "mt-4 text-2xl font-black text-center text-green-600";
+                    playSound('correct');
+                    showFloatingPoint(mouseX, mouseY, '+10', 'gold');
+                } else {
+                    // Hiển thị đáp án đúng
+                    let correctStr = '';
+                    currentMultiAnswers.forEach((ans, i) => {
+                        correctStr += `${String.fromCharCode(97+i)}: ${ans ? 'Đúng' : 'Sai'} `;
+                    });
+                    feedback.textContent = "❌ SAI! Đáp án: " + correctStr;
+                    feedback.className = "mt-4 text-2xl font-black text-center text-red-600";
+                    playSound('wrong');
+                }
+
+                setTimeout(() => {
+                    questionModal.classList.remove('active');
+                    if (!timeUp && !cheatDetected) {
+                        gameActive = true;
+                        peep();
+                    } else if (timeUp) {
+                        endGame();
+                    }
+                }, 1800);
+            }
+
+            window.startGame = startGame;
+        })();
+    </script>
+</body>
+</html>
